@@ -1,7 +1,7 @@
 bl_info = {
     "name": "C_of_G",
     "author": "Ian Huish",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 78, 0),
     "location": "Toolshelf>Tools Tab",
     "description": "Tracks an armature's centre of gravity",
@@ -22,15 +22,11 @@ from bpy.app.handlers import frame_change_post
 from bpy.app.handlers import scene_update_post
 from bpy.app.handlers import load_post
 from bpy.app.handlers import persistent
+from bpy.props import FloatProperty, IntProperty, BoolProperty, EnumProperty, StringProperty    
 
 handler_key = "C_OF_G_Handler"
 handler_ov_key = "C_OF_G_OV_Handler"
 
-# def new_blend_handler():
-    # print("C_of_G File Handler")
-    # if handler_key not in driver_namespace:
-        # scene_update_post.append(frame_handler)
-        # driver_namespace[handler_key] = frame_handler
     
 
 @persistent
@@ -52,6 +48,9 @@ def frame_handler(scene):
         #print("Not an Armature", Rig_obj.type)
         return
     TotalMass = 0.0
+    
+    offset = Vector((0,0,0))
+    
     for bone in Rig_obj.pose.bones:
         #print(bone.name)
         if bone.get("mass") is not None:
@@ -63,13 +62,15 @@ def frame_handler(scene):
                 COG_loc = COG_loc + ((bone.tail + (bone.head-bone.tail)/2.0)-COG_loc)*bone["mass"]/TotalMass
     
     if COG_Empty != None:
-        COG_Empty.location = COG_loc + Rig_obj.location
+        if 'Offset' in COG_Empty:
+            offset = Vector(COG_Empty["Offset"])
+        COG_Empty.location = COG_loc + Rig_obj.location + offset
     
     if COGF_Empty != None:
         root_bone = Rig_obj.pose.bones.get("root")
         if root_bone != None:
             COG_loc[2] = root_bone.location[2]
-        COGF_Empty.location = COG_loc + Rig_obj.location
+        COGF_Empty.location = COG_loc + Rig_obj.location + offset
         
 def RemoveHandler():
     #Scene upate handler
@@ -126,7 +127,6 @@ class ARMATURE_OT_add_mass(Operator):
 
     def execute(self, context):
 
-        #print("Mass Allocate")
         TargetRig = context.object
         if TargetRig.type != "ARMATURE":
             print("Not an Armature", context.object.type)
@@ -136,7 +136,6 @@ class ARMATURE_OT_add_mass(Operator):
                 
                 def_bone = TargetRig.pose.bones[bone.name]
                 self.CalcMass(def_bone)
-
         return {'FINISHED'}
 
    
@@ -147,10 +146,22 @@ class ARMATURE_OT_add_COG(Operator):
     bl_label = "Track C_of_G"
     bl_options = {'REGISTER', 'UNDO'}
 
+    #Property declaration
+    pX_Offset = FloatProperty(name="X Offset", description="Offset in the X direction", default=0.0)
+    pY_Offset = FloatProperty(name="Y Offset", description="Offset in the Y direction", default=0.0)
+    pZ_Offset = FloatProperty(name="Z Offset", description="Offset in the Z direction", default=0.0)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('screen.repeat_last', text="Repeat", icon='FILE_REFRESH' )
+
+        layout.prop(self, "pX_Offset")
+        layout.prop(self, "pY_Offset")
+        layout.prop(self, "pZ_Offset")
+
     def execute(self, context):
 
         # add_object(self, context)
-        #print("C_of_G Called")
         
         #Check that an armature is selected
         TargetRig = context.object
@@ -158,36 +169,42 @@ class ARMATURE_OT_add_COG(Operator):
             print("Not an Armature", context.object.type)
             return
        
-        if (bpy.data.objects.get("COG_Empty") is None) and (bpy.data.objects.get("COGF_Empty") is None): 
+        #if (bpy.data.objects.get("COG_Empty") is None) and (bpy.data.objects.get("COGF_Empty") is None): 
        #Create the COG Empty if it does exist
-            if bpy.data.objects.get("COG_Empty") is None:
-                COG_Empty = bpy.data.objects.new("COG_Empty", None)
-                COG_Empty.empty_draw_type = "CONE"
-                COG_Empty.empty_draw_size = 0.1
-                COG_Empty.show_x_ray = 1
-                COG_Empty.rotation_euler[0] = math.radians(-90.0)
-                scene = bpy.context.scene
-                scene.objects.link(COG_Empty)
-                scene.update()
-                #Add Custom property
-                COG_Empty["RigName"] = TargetRig.name
+        COG_Empty = bpy.data.objects.get("COG_Empty")
+        if COG_Empty is None:
+            COG_Empty = bpy.data.objects.new("COG_Empty", None)
+            COG_Empty.empty_draw_type = "CONE"
+            COG_Empty.empty_draw_size = 0.1
+            COG_Empty.show_x_ray = 1
+            COG_Empty.rotation_euler[0] = math.radians(-90.0)
+            scene = bpy.context.scene
+            scene.objects.link(COG_Empty)
+            scene.update()
+            #Add Custom property
+            COG_Empty["RigName"] = TargetRig.name
+        COG_Empty["Offset"] = [self.pX_Offset, self.pY_Offset, self.pZ_Offset]
                 
        #Create the COGF Empty if it does exist and there is a root bone (The one on the floor!)
-            if bpy.data.objects.get("COGF_Empty") is None:
-                root_bone = TargetRig.data.bones.get("root")
-                if root_bone != None:
-                    COGF_Empty = bpy.data.objects.new("COGF_Empty", None)
-                    COGF_Empty.empty_draw_type = "CONE"
-                    COGF_Empty.empty_draw_size = 0.1
-                    COGF_Empty.show_x_ray = 1
-                    COGF_Empty.rotation_euler[0] = math.radians(90.0)
-                    scene = bpy.context.scene
-                    scene.objects.link(COGF_Empty)
-                    scene.update()
-                    #Add Custom property
-                    COGF_Empty["RigName"] = TargetRig.name
+        if bpy.data.objects.get("COGF_Empty") is None:
+            root_bone = TargetRig.data.bones.get("root")
+            if root_bone != None:
+                COGF_Empty = bpy.data.objects.new("COGF_Empty", None)
+                COGF_Empty.empty_draw_type = "CONE"
+                COGF_Empty.empty_draw_size = 0.1
+                COGF_Empty.show_x_ray = 1
+                COGF_Empty.rotation_euler[0] = math.radians(90.0)
+                scene = bpy.context.scene
+                scene.objects.link(COGF_Empty)
+                scene.update()
+                #Add Custom property
+                COGF_Empty["RigName"] = TargetRig.name
+                COG_Empty["Offset"] = [self.pX_Offset, self.pY_Offset, self.pZ_Offset]
+
              
         return {'FINISHED'}
+        
+
 
         
 #UI Panels
@@ -202,7 +219,7 @@ class ARMATURE_PT_add_COG(bpy.types.Panel):
     #bl_context = "objectmode"
     @classmethod
     def poll(cls, context):
-        return context.mode in {'OBJECT', 'POSE'}
+        return (context.mode in {'OBJECT', 'POSE'}) and (context.object.type == "ARMATURE")
 
     def draw(self, context):
         layout = self.layout

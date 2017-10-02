@@ -99,30 +99,66 @@ class ARMATURE_OT_add_mass(Operator):
     bl_label = "Add mass for C of G"
     bl_options = {'REGISTER', 'UNDO'}
     
+    pArm = FloatProperty(name="Arm", description="Arm Mass", default=0.2)
+    pLeg = FloatProperty(name="Leg", description="Leg Mass", default=0.3)
+    pThigh = FloatProperty(name="Thigh", description="Thigh Mass", default=0.3)
+    pShin = FloatProperty(name="Shin", description="Shin Mass", default=0.25)
+    pSpine = FloatProperty(name="Spine", description="Spine Mass", default=1.0)
+    pChest = FloatProperty(name="Chest", description="Chest Mass", default=1.0)
+    pHead = FloatProperty(name="Head", description="Head Mass", default=0.92)
+    pNeck = FloatProperty(name="Neck", description="Neck Mass", default=0.2)
+    pHips = FloatProperty(name="Hips", description="Hips Mass", default=1.0)
+    pPelvis = FloatProperty(name="Pelvis", description="Pelvis Mass", default=0.1)
+
+    pTotal = FloatProperty(name="TotalMass", description="Total Mass Added", default=0.0)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('screen.repeat_last', text="Repeat", icon='FILE_REFRESH' )
+        
+        layout.prop(self, "pArm")
+        layout.prop(self, "pLeg")
+        layout.prop(self, "pThigh")
+        layout.prop(self, "pShin")
+        layout.prop(self, "pSpine")
+        layout.prop(self, "pChest")
+        layout.prop(self, "pHead")
+        layout.prop(self, "pNeck")
+        layout.prop(self, "pHips")
+        layout.prop(self, "pPelvis")
+        row = layout.row()
+        row.prop(self, "pTotal")
+
     def CalcMass(self, def_bone):
         boneMass = 0.0
         boneName = def_bone.name.lower()
+        added = 0.0
         #print("Calcmass name", def_bone.name, boneName)
         if "arm" in boneName:
-            boneMass = 0.2
-            #print("Adding arm", boneName)
+            boneMass = self.pArm
         elif "leg" in boneName:
-            boneMass = 0.3
+            boneMass = self.pLeg
         elif "thigh" in boneName:
-            boneMass = 0.3
+            boneMass = self.pThigh
         elif "shin" in boneName:
-            boneMass = 0.25
+            boneMass = self.pShin
         elif "spine" in boneName:
-            boneMass = 1
+            boneMass = self.pSpine
         elif "chest" in boneName:
-            boneMass = 1
+            boneMass = self.pChest
         elif "head" in boneName:
-            boneMass = 0.9
+            boneMass = self.pHead
         elif "neck" in boneName:
-            boneMass = 0.2
+            boneMass = self.pNeck
+        elif "hips" in boneName:
+            boneMass = self.pHips
+        elif "pelvis" in boneName:
+            boneMass = self.pPelvis
         boneMass = boneMass * def_bone.length
         if boneMass > 0.0:
             def_bone["mass"] = boneMass
+            added = boneMass
+        return boneMass
 
 
     def execute(self, context):
@@ -131,11 +167,11 @@ class ARMATURE_OT_add_mass(Operator):
         if TargetRig.type != "ARMATURE":
             print("Not an Armature", context.object.type)
             return
+        self.pTotal = 0.0
         for bone in TargetRig.data.bones:
             if bone.use_deform:
-                
                 def_bone = TargetRig.pose.bones[bone.name]
-                self.CalcMass(def_bone)
+                self.pTotal += self.CalcMass(def_bone)
         return {'FINISHED'}
 
    

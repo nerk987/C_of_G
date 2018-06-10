@@ -1,6 +1,6 @@
 # C_of_G - Center of Gravity Addon
    
-V0.0.1 Initial Release 
+V0.1.1 Initial Release 
 
 ## Introduction
 It's important when animating to have a sense of the 'weight' of the character, otherwise the action will not look realistic. 

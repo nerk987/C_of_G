@@ -1,6 +1,8 @@
 # C_of_G - Center of Gravity Addon
    
-V0.1.1 Initial Release 
+V2.0.0 Blender 2.8 Version
+
+Addon Download : [C_of_G.py](https://github.com/nerk987/C_of_G/releases/download/v2.0.0/C_of_G.py) 
 
 ## Introduction
 It's important when animating to have a sense of the 'weight' of the character, otherwise the action will not look realistic. 

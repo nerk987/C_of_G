@@ -1,16 +1,17 @@
 bl_info = {
     "name": "C_of_G",
-    "author": "Ian Huish",
-    "version": (1, 1),
-    "blender": (2, 78, 0),
-    "location": "Toolshelf>Tools Tab",
+    "author": "Ian Huish (Nerk)",
+    "version": (2, 0),
+    "blender": (2, 80, 0),
+    "location": "Toolshelf>C_of_G",
     "description": "Tracks an armature's centre of gravity",
     "warning": "",
     "wiki_url": "",
     "category": "Armature",
     }
 
-
+#### Blender 2.8 version  ####
+    
 import bpy
 from bpy.types import Operator
 from bpy.props import FloatVectorProperty
@@ -19,7 +20,7 @@ from mathutils import Vector
 import math
 from bpy.app import driver_namespace
 from bpy.app.handlers import frame_change_post
-from bpy.app.handlers import scene_update_post
+from bpy.app.handlers import depsgraph_update_post
 from bpy.app.handlers import load_post
 from bpy.app.handlers import persistent
 from bpy.props import FloatProperty, IntProperty, BoolProperty, EnumProperty, StringProperty    
@@ -31,9 +32,10 @@ handler_ov_key = "C_OF_G_OV_Handler"
 
 @persistent
 def frame_handler(scene):
-    #print("C_of_G Update", scene.frame_current)
+    # print("C_of_G Update", scene.frame_current)
     COG_Empty = bpy.data.objects.get("COG_Empty")
     COGF_Empty = bpy.data.objects.get("COGF_Empty")
+    # print("COG_Empty Found", COG_Empty)
     if (COG_Empty == None) and (COGF_Empty == None):
         return
     if COG_Empty != None:
@@ -60,13 +62,15 @@ def frame_handler(scene):
             else:
                 TotalMass = TotalMass + bone["mass"]
                 COG_loc = COG_loc + ((bone.tail + (bone.head-bone.tail)/2.0)-COG_loc)*bone["mass"]/TotalMass
+        # else:
+            # return
     
-    if COG_Empty != None:
+    if (COG_Empty != None) and (COG_loc != None):
         if 'Offset' in COG_Empty:
             offset = Vector(COG_Empty["Offset"])
         COG_Empty.location = COG_loc + Rig_obj.location + offset
     
-    if COGF_Empty != None:
+    if (COGF_Empty != None) and (COG_loc != None):
         root_bone = Rig_obj.pose.bones.get("root")
         if root_bone != None:
             COG_loc[2] = root_bone.location[2]
@@ -78,8 +82,8 @@ def RemoveHandler():
         if driver_namespace[handler_key] in frame_change_post:
             frame_change_post.remove(driver_namespace[handler_key])
             #print("Handler Removed")
-        if driver_namespace[handler_key] in scene_update_post:
-            scene_update_post.remove(driver_namespace[handler_key])
+        if driver_namespace[handler_key] in depsgraph_update_post:
+            depsgraph_update_post.remove(driver_namespace[handler_key])
             #print("Handler Removed")
         del driver_namespace[handler_key]
         
@@ -88,7 +92,7 @@ def RemoveHandler():
 def AddHandler():
     RemoveHandler()
     #load the scene update handler
-    scene_update_post.append(frame_handler)
+    depsgraph_update_post.append(frame_handler)
     driver_namespace[handler_key] = frame_handler
     
         
@@ -99,18 +103,18 @@ class ARMATURE_OT_add_mass(Operator):
     bl_label = "Add mass for C of G"
     bl_options = {'REGISTER', 'UNDO'}
     
-    pArm = FloatProperty(name="Arm", description="Arm Mass", default=0.2)
-    pLeg = FloatProperty(name="Leg", description="Leg Mass", default=0.3)
-    pThigh = FloatProperty(name="Thigh", description="Thigh Mass", default=0.3)
-    pShin = FloatProperty(name="Shin", description="Shin Mass", default=0.25)
-    pSpine = FloatProperty(name="Spine", description="Spine Mass", default=1.0)
-    pChest = FloatProperty(name="Chest", description="Chest Mass", default=1.0)
-    pHead = FloatProperty(name="Head", description="Head Mass", default=0.92)
-    pNeck = FloatProperty(name="Neck", description="Neck Mass", default=0.2)
-    pHips = FloatProperty(name="Hips", description="Hips Mass", default=1.0)
-    pPelvis = FloatProperty(name="Pelvis", description="Pelvis Mass", default=0.1)
+    pArm : FloatProperty(name="Arm", description="Arm Mass", default=0.2)
+    pLeg : FloatProperty(name="Leg", description="Leg Mass", default=0.3)
+    pThigh : FloatProperty(name="Thigh", description="Thigh Mass", default=0.3)
+    pShin : FloatProperty(name="Shin", description="Shin Mass", default=0.25)
+    pSpine : FloatProperty(name="Spine", description="Spine Mass", default=1.0)
+    pChest : FloatProperty(name="Chest", description="Chest Mass", default=1.0)
+    pHead : FloatProperty(name="Head", description="Head Mass", default=0.92)
+    pNeck : FloatProperty(name="Neck", description="Neck Mass", default=0.2)
+    pHips : FloatProperty(name="Hips", description="Hips Mass", default=1.0)
+    pPelvis : FloatProperty(name="Pelvis", description="Pelvis Mass", default=0.1)
 
-    pTotal = FloatProperty(name="TotalMass", description="Total Mass Added", default=0.0)
+    pTotal : FloatProperty(name="TotalMass", description="Total Mass Added", default=0.0)
 
     def draw(self, context):
         layout = self.layout
@@ -183,9 +187,9 @@ class ARMATURE_OT_add_COG(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     #Property declaration
-    pX_Offset = FloatProperty(name="X Offset", description="Offset in the X direction", default=0.0)
-    pY_Offset = FloatProperty(name="Y Offset", description="Offset in the Y direction", default=0.0)
-    pZ_Offset = FloatProperty(name="Z Offset", description="Offset in the Z direction", default=0.0)
+    pX_Offset : FloatProperty(name="X Offset", description="Offset in the X direction", default=0.0)
+    pY_Offset : FloatProperty(name="Y Offset", description="Offset in the Y direction", default=0.0)
+    pZ_Offset : FloatProperty(name="Z Offset", description="Offset in the Z direction", default=0.0)
 
     def draw(self, context):
         layout = self.layout
@@ -209,14 +213,15 @@ class ARMATURE_OT_add_COG(Operator):
        #Create the COG Empty if it does exist
         COG_Empty = bpy.data.objects.get("COG_Empty")
         if COG_Empty is None:
+            # print("Creating COG_Empty")
             COG_Empty = bpy.data.objects.new("COG_Empty", None)
-            COG_Empty.empty_draw_type = "CONE"
-            COG_Empty.empty_draw_size = 0.1
-            COG_Empty.show_x_ray = 1
+            COG_Empty.empty_display_type = "CONE"
+            COG_Empty.empty_display_size = 0.1
+            COG_Empty.show_in_front = 1
             COG_Empty.rotation_euler[0] = math.radians(-90.0)
             scene = bpy.context.scene
-            scene.objects.link(COG_Empty)
-            scene.update()
+            scene.collection.objects.link(COG_Empty)
+            # scene.update()
             #Add Custom property
             COG_Empty["RigName"] = TargetRig.name
         COG_Empty["Offset"] = [self.pX_Offset, self.pY_Offset, self.pZ_Offset]
@@ -226,13 +231,13 @@ class ARMATURE_OT_add_COG(Operator):
             root_bone = TargetRig.data.bones.get("root")
             if root_bone != None:
                 COGF_Empty = bpy.data.objects.new("COGF_Empty", None)
-                COGF_Empty.empty_draw_type = "CONE"
-                COGF_Empty.empty_draw_size = 0.1
-                COGF_Empty.show_x_ray = 1
+                COGF_Empty.empty_display_type = "CONE"
+                COGF_Empty.empty_display_size = 0.1
+                COGF_Empty.show_in_front = 1
                 COGF_Empty.rotation_euler[0] = math.radians(90.0)
                 scene = bpy.context.scene
-                scene.objects.link(COGF_Empty)
-                scene.update()
+                scene.collection.objects.link(COGF_Empty)
+                # depsgraph.update()
                 #Add Custom property
                 COGF_Empty["RigName"] = TargetRig.name
                 COG_Empty["Offset"] = [self.pX_Offset, self.pY_Offset, self.pZ_Offset]
@@ -250,8 +255,8 @@ class ARMATURE_PT_add_COG(bpy.types.Panel):
     bl_label = "C_of_G"
     bl_idname = "ARMATURE_PT_add_COG"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
-    bl_category = "Tools"
+    bl_region_type = 'UI'
+    bl_category = "C_of_G"
     #bl_context = "objectmode"
     @classmethod
     def poll(cls, context):
@@ -272,21 +277,27 @@ class ARMATURE_PT_add_COG(bpy.types.Panel):
         row = layout.row()
         row.operator("armature.c_of_g")
         
-
+classes = (
+    ARMATURE_OT_add_COG,
+    ARMATURE_OT_add_mass,
+    ARMATURE_PT_add_COG,
+)
+# register, unregister = bpy.utils.register_classes_factory(classes)
 
 def register():
-    bpy.utils.register_class(ARMATURE_OT_add_COG)
-    bpy.utils.register_class(ARMATURE_OT_add_mass)
-    bpy.utils.register_class(ARMATURE_PT_add_COG)
+    from bpy.utils import register_class
+    for cls in classes:
+        register_class(cls)
+    # print("Add Handler")
     AddHandler()
 
 
 def unregister():
     RemoveHandler()
-    bpy.utils.unregister_class(ARMATURE_OT_add_COG)
-    bpy.utils.unregister_class(ARMATURE_OT_add_mass)
-    bpy.utils.unregister_class(ARMATURE_PT_add_COG)
+    from bpy.utils import unregister_class
+    for cls in classes:
+        unregister_class(cls)
 
 
-if __name__ == "__main__":
-    register()
+# if __name__ == "__main__":
+    # register()

@@ -1,7 +1,7 @@
 bl_info = {
     "name": "C_of_G",
     "author": "Ian Huish (Nerk)",
-    "version": (2, 0),
+    "version": (2, 1),
     "blender": (2, 80, 0),
     "location": "Toolshelf>C_of_G",
     "description": "Tracks an armature's centre of gravity",
@@ -10,7 +10,7 @@ bl_info = {
     "category": "Armature",
     }
 
-#### Blender 2.8 version  ####
+#### Blender 2.8 version  - fixed frame update ####
     
 import bpy
 from bpy.types import Operator
@@ -93,6 +93,7 @@ def AddHandler():
     RemoveHandler()
     #load the scene update handler
     depsgraph_update_post.append(frame_handler)
+    frame_change_post.append(frame_handler)
     driver_namespace[handler_key] = frame_handler
     
         
